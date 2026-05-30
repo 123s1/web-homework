@@ -1,0 +1,19 @@
+[Unit]
+Description=Museum Reservation Backend (Spring Boot)
+After=network.target mysql.service mysqld.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=__RUN_USER__
+WorkingDirectory=__APP_HOME__
+EnvironmentFile=__APP_HOME__/backend.env
+ExecStart=/usr/bin/env java -jar __APP_HOME__/museum-reservation-backend.jar
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:__APP_HOME__/logs/backend.log
+StandardError=append:__APP_HOME__/logs/backend.log
+
+[Install]
+WantedBy=multi-user.target
