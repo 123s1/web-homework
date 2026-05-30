@@ -57,11 +57,12 @@
               </div>
 
               <div class="border rounded-4 p-4 p-lg-5 text-center mb-4">
-                <div class="small text-muted mb-3">二维码内容</div>
-                <div class="mx-auto mb-3 qr-placeholder">
-                  <div class="fw-bold text-break px-3">{{ reservation.qrContent }}</div>
+                <div class="small text-muted mb-3">入馆凭证二维码</div>
+                <div class="mx-auto mb-3 qr-code-box">
+                  <QrCode :value="reservation.qrContent" :size="220" />
                 </div>
-                <p class="text-muted-strong mb-0">第一版前端先展示二维码内容，后续可接入 qrcode.vue 生成真实二维码图片。</p>
+                <p class="text-muted-strong mb-1">入馆时请向工作人员出示此二维码核验。</p>
+                <div class="small text-muted text-break">{{ reservation.qrContent }}</div>
               </div>
 
               <div class="d-flex flex-wrap gap-3">
@@ -90,6 +91,7 @@
 <script setup>
 import { ref } from 'vue'
 import VisitorLayout from '../../layouts/VisitorLayout.vue'
+import QrCode from '../../components/QrCode.vue'
 import { getReservationResult } from '../../utils/storage'
 import { formatDate, formatDateTime, formatTime } from '../../utils/format'
 
@@ -97,21 +99,11 @@ const reservation = ref(getReservationResult())
 </script>
 
 <style scoped>
-.qr-placeholder {
-  width: min(100%, 320px);
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 10px solid #1f2937;
-  border-radius: 20px;
-  color: #1f2937;
-  background:
-    linear-gradient(45deg, rgba(31, 41, 55, 0.08) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(31, 41, 55, 0.08) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, rgba(31, 41, 55, 0.08) 75%),
-    linear-gradient(-45deg, transparent 75%, rgba(31, 41, 55, 0.08) 75%);
-  background-position: 0 0, 0 12px, 12px -12px, -12px 0;
-  background-size: 24px 24px;
+.qr-code-box {
+  width: fit-content;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
 }
 </style>

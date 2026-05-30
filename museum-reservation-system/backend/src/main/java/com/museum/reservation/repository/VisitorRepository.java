@@ -38,6 +38,17 @@ public class VisitorRepository {
         return visitors.stream().findFirst();
     }
 
+    public void lockById(Long id) {
+        jdbcTemplate.queryForObject("""
+                        SELECT id
+                        FROM visitor
+                        WHERE id = ?
+                        FOR UPDATE
+                        """,
+                Long.class,
+                id);
+    }
+
     public Long insert(VisitorLoginRequest request) {
         return insert(request.name(), request.idCard(), request.phone());
     }
