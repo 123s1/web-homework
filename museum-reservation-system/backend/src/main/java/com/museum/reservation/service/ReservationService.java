@@ -42,6 +42,7 @@ public class ReservationService {
     public ReservationCreateResponse createReservation(ReservationCreateRequest request) {
         String normalizedIdCard = request.idCard().toUpperCase();
         Visitor visitor = getOrCreateVisitor(request, normalizedIdCard);
+        visitorRepository.lockById(visitor.id());
         AdminSlotResponse slot = slotRepository.findById(request.slotId())
                 .orElseThrow(() -> new BusinessException("预约时段不存在"));
         AdminActivityResponse activity = activityRepository.findById(slot.activityId())
@@ -67,7 +68,7 @@ public class ReservationService {
                     qrContent
             );
         } catch (DuplicateKeyException exception) {
-            throw new BusinessException("同一身份证同一天只能预约一次");
+            throw new BusinessException("您已预约过该时段，请勿重复预约");
         }
         if (reservationId == null) {
             throw new BusinessException("预约记录创建失败");
@@ -131,8 +132,13 @@ public class ReservationService {
         if (now.isAfter(activity.bookingEnd())) {
             throw new BusinessException("预约已经结束");
         }
-        if (reservationRecordRepository.existsSuccessByIdCardAndVisitDate(normalizedIdCard, slot.visitDate())) {
-            throw new BusinessException("同一身份证同一天只能预约一次");
+        if (reservationRecordRepository.existsSuccessByIdCardAndSlot(normalizedIdCard, slot.id())) {
+            throw new BusinessException("您已预约过该时段，请勿重复预约");
+        }
+        int personLimit = activity.personLimit() == null ? 1 : activity.personLimit();
+        int alreadyBooked = reservationRecordRepository.countSuccessByIdCardAndVisitDate(normalizedIdCard, slot.visitDate());
+        if (alreadyBooked >= personLimit) {
+            throw new BusinessException("您当天的预约次数已达上限（每人每天最多 " + personLimit + " 场）");
         }
         if (slot.remaining() == null || slot.remaining() <= 0) {
             throw new BusinessException("预约名额已满");

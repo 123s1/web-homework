@@ -26,7 +26,7 @@ public class ReservationRecordRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public boolean existsSuccessByIdCardAndVisitDate(String idCard, LocalDate visitDate) {
+    public int countSuccessByIdCardAndVisitDate(String idCard, LocalDate visitDate) {
         Integer count = jdbcTemplate.queryForObject("""
                         SELECT COUNT(*)
                         FROM reservation_record
@@ -37,6 +37,20 @@ public class ReservationRecordRepository {
                 Integer.class,
                 idCard,
                 Date.valueOf(visitDate));
+        return count == null ? 0 : count;
+    }
+
+    public boolean existsSuccessByIdCardAndSlot(String idCard, Long slotId) {
+        Integer count = jdbcTemplate.queryForObject("""
+                        SELECT COUNT(*)
+                        FROM reservation_record
+                        WHERE id_card = ?
+                          AND slot_id = ?
+                          AND status = 'SUCCESS'
+                        """,
+                Integer.class,
+                idCard,
+                slotId);
         return count != null && count > 0;
     }
 

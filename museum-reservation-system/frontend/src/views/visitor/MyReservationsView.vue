@@ -84,9 +84,14 @@
                 </div>
               </div>
 
-              <div class="border rounded-4 p-3 bg-light">
-                <div class="small text-muted mb-2">入馆凭证内容</div>
-                <div class="fw-semibold text-break">{{ reservation.qrContent }}</div>
+              <div class="border rounded-4 p-3 bg-light d-flex align-items-center gap-3">
+                <div class="bg-white p-2 rounded-3 border flex-shrink-0">
+                  <QrCode :value="reservation.qrContent" :size="120" />
+                </div>
+                <div>
+                  <div class="small text-muted mb-1">入馆凭证二维码</div>
+                  <div class="small text-break">{{ reservation.qrContent }}</div>
+                </div>
               </div>
             </article>
           </div>
@@ -103,6 +108,7 @@ import { onMounted, ref } from 'vue'
 import EmptyState from '../../components/EmptyState.vue'
 import ErrorAlert from '../../components/ErrorAlert.vue'
 import LoadingState from '../../components/LoadingState.vue'
+import QrCode from '../../components/QrCode.vue'
 import VisitorLayout from '../../layouts/VisitorLayout.vue'
 import { listMyReservations } from '../../api/reservation'
 import { getVisitorInfo } from '../../utils/storage'

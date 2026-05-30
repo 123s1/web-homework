@@ -9,10 +9,11 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "vue": "latest",
-    "vue-router": "latest",
     "axios": "latest",
-    "bootstrap": "latest"
+    "bootstrap": "latest",
+    "qrcode": "^1.5.4",
+    "vue": "latest",
+    "vue-router": "latest"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "latest",
