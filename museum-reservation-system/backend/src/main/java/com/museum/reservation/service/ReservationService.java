@@ -110,11 +110,16 @@ public class ReservationService {
                     return new Visitor(visitor.id(), request.name(), normalizedIdCard, request.phone());
                 })
                 .orElseGet(() -> {
-                    Long visitorId = visitorRepository.insert(request.name(), normalizedIdCard, request.phone());
-                    if (visitorId == null) {
-                        throw new BusinessException("游客信息创建失败");
+                    try {
+                        Long visitorId = visitorRepository.insert(request.name(), normalizedIdCard, request.phone());
+                        if (visitorId == null) {
+                            throw new BusinessException("游客信息创建失败");
+                        }
+                        return new Visitor(visitorId, request.name(), normalizedIdCard, request.phone());
+                    } catch (DuplicateKeyException exception) {
+                        return visitorRepository.findByIdCard(normalizedIdCard)
+                                .orElseThrow(() -> new BusinessException("游客信息创建失败"));
                     }
-                    return new Visitor(visitorId, request.name(), normalizedIdCard, request.phone());
                 });
     }
 
