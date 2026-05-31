@@ -88,3 +88,7 @@ node_modules/
 .env
 .env.local
 .env.*.local
+
+# Deployment local config (contains DB password)
+deploy.env
+museum-reservation-system/deploy/deploy.env
