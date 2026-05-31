@@ -20,7 +20,7 @@ MySQL 8（museum_reservation 库）
 ## 0. 虚拟机环境要求
 
 - VMware Workstation / Player 新建虚拟机。
-- 操作系统：Ubuntu 22.04（推荐）或 CentOS 7/8。
+- 操作系统：Ubuntu 22.04（推荐）或 CentOS 7/8；亦兼容 **Ubuntu 20.04**（脚本会在 20.04 上自动改用 Adoptium Temurin 21 安装 JDK 21）。
 - **内存固定分配 8GB（8192MB）**（作业硬性要求）。
 - 网络模式建议 **NAT** 或 **桥接**，保证宿主机能访问虚拟机 IP。
 - 虚拟机内可联网（脚本需要在线安装 JDK/Node/MySQL/Nginx）。
