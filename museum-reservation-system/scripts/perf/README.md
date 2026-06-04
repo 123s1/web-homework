@@ -10,7 +10,7 @@
 
 ```bash
 # 1) 一致性脚本（需后端已运行 + 已建好测试时段 SLOT_ID=9001）
-export DB_PASSWORD=你的业务库密码
+export DB_PASSWORD='Museum@123456'   # museum 用户的密码
 ./concurrency_test.sh 9001 50 1000 200
 
 # 2) JMeter
