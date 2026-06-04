@@ -17,13 +17,67 @@ import java.util.List;
 @Service
 public class MuseumService {
 
+    private static final long MUSEUM_INFO_TTL_MS = 5 * 60 * 1000L;
+    private static final long NOTICES_TTL_MS = 2 * 60 * 1000L;
+    private static final long SLOTS_TTL_MS = 3 * 1000L;
+
     private final JdbcTemplate jdbcTemplate;
+
+    private volatile MuseumInfoResponse cachedMuseumInfo;
+    private volatile long museumInfoExpireAt = 0L;
+
+    private volatile List<NoticeResponse> cachedNotices;
+    private volatile long noticesExpireAt = 0L;
+
+    private volatile List<AvailableSlotResponse> cachedAllSlots;
+    private volatile long allSlotsExpireAt = 0L;
 
     public MuseumService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
     public MuseumInfoResponse getMuseumInfo() {
+        long now = System.currentTimeMillis();
+        MuseumInfoResponse cached = cachedMuseumInfo;
+        if (cached != null && now < museumInfoExpireAt) {
+            return cached;
+        }
+        MuseumInfoResponse info = queryMuseumInfoFromDb();
+        cachedMuseumInfo = info;
+        museumInfoExpireAt = now + MUSEUM_INFO_TTL_MS;
+        return info;
+    }
+
+    public List<NoticeResponse> listEnabledNotices() {
+        long now = System.currentTimeMillis();
+        List<NoticeResponse> cached = cachedNotices;
+        if (cached != null && now < noticesExpireAt) {
+            return cached;
+        }
+        List<NoticeResponse> notices = queryEnabledNoticesFromDb();
+        cachedNotices = notices;
+        noticesExpireAt = now + NOTICES_TTL_MS;
+        return notices;
+    }
+
+    public List<AvailableSlotResponse> listAvailableSlots(LocalDate visitDate) {
+        // booked_count 实时变化，仅对无日期参数的全量查询做 3 秒短缓存；
+        // 带具体日期的查询直接落库，保证余量准确。
+        if (visitDate != null) {
+            return queryAvailableSlotsFromDb(visitDate);
+        }
+        long now = System.currentTimeMillis();
+        List<AvailableSlotResponse> cached = cachedAllSlots;
+        if (cached != null && now < allSlotsExpireAt) {
+            return cached;
+        }
+        List<AvailableSlotResponse> slots = queryAvailableSlotsFromDb(null);
+        cachedAllSlots = slots;
+        allSlotsExpireAt = now + SLOTS_TTL_MS;
+        return slots;
+    }
+
+    private MuseumInfoResponse queryMuseumInfoFromDb() {
         List<MuseumInfoResponse> results = jdbcTemplate.query("""
                         SELECT id, name, address, open_info, rules, status, updated_at
                         FROM museum_info
@@ -46,7 +100,7 @@ public class MuseumService {
         return results.get(0);
     }
 
-    public List<NoticeResponse> listEnabledNotices() {
+    private List<NoticeResponse> queryEnabledNoticesFromDb() {
         return jdbcTemplate.query("""
                         SELECT id, title, content, type, enabled, created_at
                         FROM notice
@@ -66,7 +120,7 @@ public class MuseumService {
                 });
     }
 
-    public List<AvailableSlotResponse> listAvailableSlots(LocalDate visitDate) {
+    private List<AvailableSlotResponse> queryAvailableSlotsFromDb(LocalDate visitDate) {
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id AS slot_id,
                        a.id AS activity_id,

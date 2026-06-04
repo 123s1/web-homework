@@ -3,6 +3,7 @@ package com.museum.reservation.repository;
 import com.museum.reservation.dto.AdminSlotResponse;
 import com.museum.reservation.dto.SlotCreateRequest;
 import com.museum.reservation.dto.SlotUpdateRequest;
+import com.museum.reservation.dto.SlotWithActivity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -45,6 +46,21 @@ public class SlotRepository {
         }
         sql.append(" ORDER BY visit_date ASC, start_time ASC, id ASC");
         return jdbcTemplate.query(sql.toString(), this::mapSlot, params.toArray());
+    }
+
+    public Optional<SlotWithActivity> findSlotWithActivity(Long slotId) {
+        List<SlotWithActivity> results = jdbcTemplate.query("""
+                        SELECT s.id, s.activity_id, s.visit_date, s.slot_name, s.start_time, s.end_time,
+                               s.total_capacity, s.booked_count, s.enabled, s.version,
+                               a.status AS activity_status, a.booking_start, a.booking_end, a.person_limit
+                        FROM reservation_slot s
+                        INNER JOIN reservation_activity a ON s.activity_id = a.id
+                        WHERE s.id = ?
+                        LIMIT 1
+                        """,
+                this::mapSlotWithActivity,
+                slotId);
+        return results.stream().findFirst();
     }
 
     public Optional<AdminSlotResponse> findById(Long id) {
@@ -135,6 +151,29 @@ public class SlotRepository {
                           AND booked_count < total_capacity
                         """,
                 id);
+    }
+
+    private SlotWithActivity mapSlotWithActivity(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        Time startTime = rs.getTime("start_time");
+        Time endTime = rs.getTime("end_time");
+        Timestamp bookingStart = rs.getTimestamp("booking_start");
+        Timestamp bookingEnd = rs.getTimestamp("booking_end");
+        return new SlotWithActivity(
+                rs.getLong("id"),
+                rs.getLong("activity_id"),
+                rs.getDate("visit_date").toLocalDate(),
+                rs.getString("slot_name"),
+                startTime == null ? null : startTime.toLocalTime(),
+                endTime == null ? null : endTime.toLocalTime(),
+                rs.getInt("total_capacity"),
+                rs.getInt("booked_count"),
+                rs.getInt("enabled"),
+                rs.getInt("version"),
+                rs.getString("activity_status"),
+                bookingStart == null ? null : bookingStart.toLocalDateTime(),
+                bookingEnd == null ? null : bookingEnd.toLocalDateTime(),
+                rs.getInt("person_limit")
+        );
     }
 
     private AdminSlotResponse mapSlot(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {

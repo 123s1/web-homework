@@ -1,14 +1,11 @@
 package com.museum.reservation.service;
 
-import com.museum.reservation.dto.AdminActivityResponse;
-import com.museum.reservation.dto.AdminSlotResponse;
 import com.museum.reservation.dto.MyReservationResponse;
 import com.museum.reservation.dto.ReservationCreateRequest;
 import com.museum.reservation.dto.ReservationCreateResponse;
-import com.museum.reservation.entity.ReservationRecord;
+import com.museum.reservation.dto.SlotWithActivity;
 import com.museum.reservation.entity.Visitor;
 import com.museum.reservation.exception.BusinessException;
-import com.museum.reservation.repository.ActivityRepository;
 import com.museum.reservation.repository.ReservationRecordRepository;
 import com.museum.reservation.repository.SlotRepository;
 import com.museum.reservation.repository.VisitorRepository;
@@ -28,13 +25,11 @@ public class ReservationService {
 
     private final VisitorRepository visitorRepository;
     private final SlotRepository slotRepository;
-    private final ActivityRepository activityRepository;
     private final ReservationRecordRepository reservationRecordRepository;
 
-    public ReservationService(VisitorRepository visitorRepository, SlotRepository slotRepository, ActivityRepository activityRepository, ReservationRecordRepository reservationRecordRepository) {
+    public ReservationService(VisitorRepository visitorRepository, SlotRepository slotRepository, ReservationRecordRepository reservationRecordRepository) {
         this.visitorRepository = visitorRepository;
         this.slotRepository = slotRepository;
-        this.activityRepository = activityRepository;
         this.reservationRecordRepository = reservationRecordRepository;
     }
 
@@ -43,24 +38,22 @@ public class ReservationService {
         String normalizedIdCard = request.idCard().toUpperCase();
         Visitor visitor = getOrCreateVisitor(request, normalizedIdCard);
         visitorRepository.lockById(visitor.id());
-        AdminSlotResponse slot = slotRepository.findById(request.slotId())
+        SlotWithActivity slot = slotRepository.findSlotWithActivity(request.slotId())
                 .orElseThrow(() -> new BusinessException("预约时段不存在"));
-        AdminActivityResponse activity = activityRepository.findById(slot.activityId())
-                .orElseThrow(() -> new BusinessException("预约活动不存在"));
-        validateReservationRule(normalizedIdCard, slot, activity);
-        int updatedRows = slotRepository.increaseBookedCount(slot.id());
+        validateReservationRule(normalizedIdCard, slot);
+        int updatedRows = slotRepository.increaseBookedCount(slot.slotId());
         if (updatedRows != 1) {
             throw new BusinessException("预约名额已满");
         }
-        String reservationNo = generateReservationNo(slot.id());
+        String reservationNo = generateReservationNo(slot.slotId());
         String qrContent = reservationNo + "|" + normalizedIdCard + "|" + slot.visitDate() + "|" + slot.slotName();
         Long reservationId;
         try {
             reservationId = reservationRecordRepository.insert(
                     reservationNo,
                     visitor.id(),
-                    activity.id(),
-                    slot.id(),
+                    slot.activityId(),
+                    slot.slotId(),
                     normalizedIdCard,
                     request.phone(),
                     slot.visitDate(),
@@ -73,20 +66,18 @@ public class ReservationService {
         if (reservationId == null) {
             throw new BusinessException("预约记录创建失败");
         }
-        ReservationRecord record = reservationRecordRepository.findById(reservationId)
-                .orElseThrow(() -> new BusinessException("预约记录创建失败"));
         return new ReservationCreateResponse(
-                record.id(),
-                record.reservationNo(),
+                reservationId,
+                reservationNo,
                 request.name(),
-                record.idCard(),
-                record.phone(),
-                record.visitDate(),
-                record.slotName(),
+                normalizedIdCard,
+                request.phone(),
+                slot.visitDate(),
+                slot.slotName(),
                 slot.startTime(),
                 slot.endTime(),
-                record.qrContent(),
-                record.createdAt()
+                qrContent,
+                LocalDateTime.now()
         );
     }
 
@@ -123,29 +114,29 @@ public class ReservationService {
                 });
     }
 
-    private void validateReservationRule(String normalizedIdCard, AdminSlotResponse slot, AdminActivityResponse activity) {
-        if (!"OPEN".equals(activity.status())) {
+    private void validateReservationRule(String normalizedIdCard, SlotWithActivity slot) {
+        if (!"OPEN".equals(slot.activityStatus())) {
             throw new BusinessException("当前预约活动未开放");
         }
         if (slot.enabled() == null || slot.enabled() != 1) {
             throw new BusinessException("预约时段不可用");
         }
         LocalDateTime now = LocalDateTime.now();
-        if (now.isBefore(activity.bookingStart())) {
+        if (now.isBefore(slot.bookingStart())) {
             throw new BusinessException("预约尚未开始");
         }
-        if (now.isAfter(activity.bookingEnd())) {
+        if (now.isAfter(slot.bookingEnd())) {
             throw new BusinessException("预约已经结束");
         }
-        if (reservationRecordRepository.existsSuccessByIdCardAndSlot(normalizedIdCard, slot.id())) {
+        if (reservationRecordRepository.existsSuccessByIdCardAndSlot(normalizedIdCard, slot.slotId())) {
             throw new BusinessException("您已预约过该时段，请勿重复预约");
         }
-        int personLimit = activity.personLimit() == null ? 1 : activity.personLimit();
+        int personLimit = slot.personLimit() == null ? 1 : slot.personLimit();
         int alreadyBooked = reservationRecordRepository.countSuccessByIdCardAndVisitDate(normalizedIdCard, slot.visitDate());
         if (alreadyBooked >= personLimit) {
             throw new BusinessException("您当天的预约次数已达上限（每人每天最多 " + personLimit + " 场）");
         }
-        if (slot.remaining() == null || slot.remaining() <= 0) {
+        if (slot.remaining() <= 0) {
             throw new BusinessException("预约名额已满");
         }
     }
