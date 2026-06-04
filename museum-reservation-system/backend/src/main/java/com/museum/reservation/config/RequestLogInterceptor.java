@@ -29,7 +29,7 @@ public class RequestLogInterceptor implements HandlerInterceptor {
         String requestType = request.getMethod() + " " + request.getRequestURI();
         String message = success ? null : "请求失败(HTTP " + status + ")";
         try {
-            requestLogRepository.insert(requestType, success, message);
+            requestLogRepository.enqueue(requestType, success, message);
         } catch (Exception exception) {
             log.warn("记录请求日志失败: {}", exception.getMessage());
         }
